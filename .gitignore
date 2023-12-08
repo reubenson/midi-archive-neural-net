@@ -1,0 +1,7 @@
+# credentials stored here ...
+config.yaml
+/dist
+models
+.venv
+.DS_STORE
+**/*.zip
