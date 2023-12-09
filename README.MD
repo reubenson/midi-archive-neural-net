@@ -3,8 +3,23 @@ This repo is responsible for defining multiple AWS Lambda functions, which are u
 
 The model is a simple transformer model, built on the PyTorch library, and based on Andrej Karpathy's Neural Net lecture series.
 
-## Architecture
-[Provide link to architecture diagram]
+## Workflow diagram
+```mermaid
+flowchart TD
+    A(Configure scraper) -->Z(Download files from Internet Archive)
+    Z --> B(Serve archived pages via GithubPages with static-site generation handled with 11ty)
+    Z --> L(Process MIDI into tokens for training neural net and upload to S3 Bucket)
+    L --> |Switch to Colab|C(Fetch tokens and tokenizer)
+    C --> E(Train neural net model)
+    E --> Y(Export model to ONNX)
+    Y --> |Done with Colab|F(Deploy to AWS Lambda)
+    %% F --> X(Daily Cloudwatch trigger)
+    F --> |Daily Cloudwatch Trigger|G(Generate MIDI sequence and save to S3)
+    %% B --> D(Load onto MIDI Archive website)
+    B --> I(Browser client connects via websockets to Lambda to receive MIDI broadcast)
+    H(Cloudwatch-triggered Lambda reads MIDI file from S3) --> I
+    G-->H
+```
 
 ### Training Notebook
 [Add source code and link to colab notebook]
