@@ -1,9 +1,28 @@
 # MIDI-Archive Lambda
-This repo is responsible for defining multiple AWS Lambda functions, which are used for generating MIDI files from a inference model (ML) trained on an training set defined at https://github.com/reubenson/midi-archive.
+This repo is responsible for defining two AWS Lambda functions. The first Lambda is used to generate prediction tokens from an ML inference model trained on MIDI files hosted by the [MIDI Archive](https://github.com/reubenson/midi-archive), and the second Lambda takes those tokens, converts it to MIDI, and saves the file to an S3 Bucket. These two Lambdas are chained together in prod via an AWS Step Function.
 
-The model is a simple transformer model, built on the PyTorch library, and based on Andrej Karpathy's Neural Net lecture series.
+The ML model follows a simple decoder-only transformer model, built on the PyTorch library, and is based on Andrej Karpathy's [Neural Net lecture series](https://karpathy.ai/zero-to-hero.html).
 
-## Workflow diagram
+Created while I was at [Recurse Center](https://recurse.com/) in late 2023!
+
+## About
+I built this project as an exploration of low-cost deployment of ML models. I decided to use Lambda (as opposed to Azure, Sagemaker, EC2, etc) because of the resource limitations and ease of scaling down uptime, and thought it would be interesting to use these limitations to explore tradeoffs in training the model. For example, the more sophisticated I make the model (increased number of parameters), the longer it takes to generate a sequence of tokens. My current plan is to only have the Lambda run once a day (staying within AWS's free tier), and since Lambda functions are limited to 15 minutes of execution time, that means a more sophisticated model may end up generating less than a minute of music. At the moment, I'm still balancing these tradeoffs with my own subjective evaluation of the aesthetic interest in _crappy_ results.
+
+For more sophisticated approaches to MIDI Machine Learning, check out [this article on using GPT-2 with MIDI](https://huggingface.co/blog/juancopi81/using-hugging-face-to-train-a-gpt-2-model-for-musi), or [this huggingface model](https://huggingface.co/krasserm/perceiver-ar-sam-giant-midi)
+
+Also, see [MIDI Archive](https://github.com/reubenson/midi-archive) for more notes on the underlying training set used for this model. While current state of the art is focused on language, there's also already been considerable work done on MIDI, including OpenAI's [Musenet](https://openai.com/research/musenet) and Magenta's [Music Transformer](https://magenta.tensorflow.org/music-transformer). Both of these models use a MIDI training set called [Maestro](https://magenta.tensorflow.org/datasets/maestro) that often comes up as a canonic MIDI archive. However, developing the training set is a critical step in the design of ML systems, and I wanted to take the opportunity to both explore the design decisions that go into developing a ML model alongside an archive.
+
+## Workflow
+- `MIDI Archive` repo is responsible for furnishing the training set in the form of .midi files and tokenized .json files
+- In this repo, run the notebook to generate tokenizer config and tokenized dataset
+- Assuming lack of access to local compute resources, run training on Colab, using pre-tokenized dataset
+- After training, export the trained model to ONNX
+- use the deploy script in `/midi-save` to push the model up to an AWS Lambda Layer
+- update the layer version in the Lambda function
+- updated model is now deployed!
+
+### Workflow Diagram
+The following is a general workflow diagram of the larger MIDI Archive project
 ```mermaid
 flowchart TD
     A(Configure scraper) -->Z(Download files from Internet Archive)
@@ -21,24 +40,16 @@ flowchart TD
     G-->H
 ```
 
+Note: the websockets portion has not yet been implemented!
+
 ### Training Notebook
-[Add source code and link to colab notebook]
+Notebook for training and exporting the model in the repo [at `/training-notebook`](https://github.com/reubenson/midi-archive-lambda/tree/main/training-notebook), and on [Colab](https://colab.research.google.com/drive/1hpzG6ygsn0Cv44ImhyOn13eHtSo_Lccg#scrollTo=2BEEaoBHBQ1K)
 
 ### Lambda #1
 The handler and deployment script is defined at `/neural-net`
 
 ### Lambda #2
 The handler and deployment script is defined at `/midi-save`
-
-## Workflow Notes
-[This workflow is also visually described in the Architecture Diagram above]
-- `MIDI Archive` repo is responsible for furnishing the training set in the form of .midi files and tokenized .json files
-- In this repo, run the notebook to generate tokenizer config and tokenized dataset
-- Assuming lack of access to local compute resources, run training on Colab, using pre-tokenized dataset
-- After training, export the trained model to ONNX
-- use the deploy script in `/midi-save` to push the model up an AWS Lambda Layer
-- update the layer version in the Lambda function
-- updated model is now deployed!
 
 <!-- The Lambda will send periodic websockets messages to client browsers containing a payload of MIDI data generated by the neural net model. -->
 
@@ -52,5 +63,8 @@ The handler and deployment script is defined at `/midi-save`
 <!-- - To get the Lambda working properly, I had to fuss with permissions a bunch [here](https://us-east-1.console.aws.amazon.com/iam/home?region=us-east-1#/roles/details/lambda_basic_execution?section=permissions) -->
 - Used `docker run --rm -v $(pwd):/package highpoints/aws-lambda-layer-zip-builder miditok` to generate .zip with miditok dependency (https://github.com/HighPoint/aws-lambda-onnx-model)
 
-## Requirements
-<!-- - User should be able to plug in a MIDI instrument and have it controlled by messages from Lambda?? -->
+## References
+- [As an alternative to the approach taken here, Docker and ECR could instead be used to manage Lambda deployment](https://www.serverless.com/blog/deploying-pytorch-model-as-a-serverless-service)
+- [Example of using an inference model exported to ONNX](https://github.com/onnx/onnx-docker/blob/master/onnx-ecosystem/inference_demos/resnet50_modelzoo_onnxruntime_inference.ipynb)
+- [PyTorch's example on exporting to ONNX](https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html)
+- [Short article on the benefits of exporting to ONNX](https://medium.com/tr-labs-ml-engineering-blog/model-deployment-with-onnx-7b45b82da71c)
