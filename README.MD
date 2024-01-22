@@ -12,29 +12,21 @@ For more sophisticated approaches to MIDI Machine Learning, check out [this arti
 
 Also, see [MIDI Archive](https://github.com/reubenson/midi-archive) for more notes on the underlying training set used for this model. While current state of the art is focused on text, there's also already been considerable work done on MIDI, including OpenAI's [Musenet](https://openai.com/research/musenet) and Magenta's [Music Transformer](https://magenta.tensorflow.org/music-transformer). Both of these models use a MIDI training set called [Maestro](https://magenta.tensorflow.org/datasets/maestro) that often comes up as a canonic MIDI archive. However, developing the training set is a critical step in the design of ML systems, and I wanted to take the opportunity to both explore the design decisions that go into developing a ML model alongside an archive.
 
-## Flowchart
-The following is a general workflow diagram of the larger MIDI Archive project
+### General Project Workflow
 ```mermaid
 flowchart TD
-    flowchart TD
     A(Scrape MIDI files from early web) --> Z(Present model outout and interactive MIDI archive on Eleventy static site)
     A --> B(Process MIDI into tokens for training neural net)
-    %% B --> L(Process MIDI into tokens for training neural net and upload to S3 Bucket)
-    B --> |Switch to Colab|C(Fetch tokens and tokenizer)
+    B --> C(Fetch tokens and tokenizer)
     C --> D(Train neural net model)
     D --> E(Export model to ONNX)
-    E --> |Done with Colab|F(Deploy to AWS Lambda)
-    %% F --> X(Daily Cloudwatch trigger)
+    E --> F(Deploy to AWS Lambda)
     F --> |Daily Cloudwatch Trigger|G(Generate MIDI sequence and save to S3)
-    %% B --> D(Load onto MIDI Archive website)
-    %% B --> I(Browser client connects via websockets to Lambda to receive MIDI broadcast)
-    %% G --> H(Cloudwatch-triggered Lambda reads MIDI file from S3) --> Z
-    %% G-->H
     G --> Z
 ```
 
 ### Training Notebook
-Notebook for training and exporting the model in the repo [at `/training-notebook`](https://github.com/reubenson/midi-archive-lambda/tree/main/training-notebook), and on [Colab](https://colab.research.google.com/drive/1hpzG6ygsn0Cv44ImhyOn13eHtSo_Lccg#scrollTo=2BEEaoBHBQ1K)
+Notebook for training and exporting the model in the repo  at [`/training-notebook`](https://github.com/reubenson/midi-archive-lambda/tree/main/training-notebook), and on [Colab](https://colab.research.google.com/drive/1hpzG6ygsn0Cv44ImhyOn13eHtSo_Lccg#scrollTo=2BEEaoBHBQ1K)
 
 
 ## Workflow
