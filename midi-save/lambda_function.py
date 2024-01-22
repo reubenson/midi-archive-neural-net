@@ -89,7 +89,7 @@ def lambda_handler(event, context):
     # this one will be archived
     upload_to_s3(midi_filepath, f'neural-net/{current_date}_sequence.mid')
     # this sequence will be used to prompt subsequent token generation
-    upload_to_s3(json_filepath, 'neural-net/token_sequence.json')
+    upload_to_s3(json_filepath, f'neural-net/token_sequence.json')
 
     return {
         'statusCode': 200,

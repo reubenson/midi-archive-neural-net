@@ -17,8 +17,7 @@ def get_previous_tokens():
 
 def download_from_s3(file_key, save_path):
     bucket_name = 'midi-archive'
-    # current_date = datetime.now().date()
-    # to_path = f'neural-net/{current_date}_sequence.mid'
+
 
     # Upload the file
     s3_client = boto3.client('s3')
@@ -29,35 +28,33 @@ def download_from_s3(file_key, save_path):
         return False
     return True
 
-def softmax(x):
-    return(np.exp(x)/np.exp(x).sum())
+# https://medium.com/mlearning-ai/softmax-temperature-5492e4007f71
+def softmax_temp(x, temperature):
+    return(np.exp(x/temperature)/np.exp(x/temperature).sum())
+    
+def generate_token(logit, temperature):
+    # 0.9999 factor is a hacky solution to probability adding up to > 1 due to float math
+    probability = 0.99999 * softmax_temp(logit, temperature)
+    val = np.random.multinomial(1, probability)
+    token = val.tolist().index(1)
+    return token
 
 def generate_tokens(session):
     input_shape = session.get_inputs()[0].shape
     batch_size, block_size = input_shape
-    num_tokens = 8192 # translates roughly to 3-4min
-    # randint should be replaced with some actual MIDI data so it's not gibberish to start
-    prev_tokens = get_previous_tokens()
-    print(f'prev_tokens {prev_tokens}')
+    num_tokens = 10000 # translates roughly to 3-4min
 
+    prev_tokens = get_previous_tokens()
     context = prev_tokens[-block_size:]
-    # context2 = np.random.randint(vocab_size, size=block_size)
-    # print(f'context1 {context1}')
-    # print(f'context2 {context2}')
-    # return
-    # context = seed_sequence
+    # context = np.random.randint(vocab_size, size=block_size)
     outputs = []
     for i in range(num_tokens):
         logits = session.run(None, {'input': [context]})[0]
         last_logit = logits[0, -1, :] # grab last timestep
-        # 0.9999 factor is a hacky solution to probability adding up to > 1 due to float math
-        probability = 0.99999 * softmax(last_logit)
-        val = np.random.multinomial(1, probability)
-        token = val.tolist().index(1)
+        token = generate_token(last_logit, 1.15)
         outputs.append(token)
         context = np.append(context, token)
         context = context[-block_size:]
-        print(f'token i: {i}')
     return outputs
 
 def lambda_handler(event, context):
